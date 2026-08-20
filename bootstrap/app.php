@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Auth\InvalidCredentialsException;
 use App\Domain\Product\ProductNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,5 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (ProductNotFoundException $e, Request $request) {
             return response()->json(['message' => $e->getMessage()], 404);
+        });
+
+        $exceptions->render(function (InvalidCredentialsException $e, Request $request) {
+            return response()->json(['message' => $e->getMessage()], 401);
         });
     })->create();
