@@ -9,10 +9,9 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * Polymorphic over `model_type`: used both for direct user permissions
-     * (model_type = App\Models\User) and for a role's own permissions
-     * (model_type = App\Models\Role), so no separate role_has_permissions
-     * table is needed.
+     * Direct permissions assigned to a model (e.g. App\Models\User),
+     * independent of any role. Role → permission assignments live in
+     * role_has_permissions instead.
      */
     public function up(): void
     {
