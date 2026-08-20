@@ -17,11 +17,14 @@ class ProductFactory extends Factory
      */
     public function definition(): array
     {
+        $price = fake()->randomFloat(2, 1, 500);
+
         return [
             'name' => fake()->words(3, true),
             'sku' => strtoupper(fake()->unique()->bothify('???-####')),
             'description' => fake()->optional()->sentence(),
-            'price' => fake()->randomFloat(2, 1, 500),
+            'price' => $price,
+            'cost' => round($price * fake()->randomFloat(2, 0.4, 0.75), 2),
             'stock' => fake()->numberBetween(0, 100),
             'active' => true,
         ];
