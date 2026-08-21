@@ -8,7 +8,10 @@ use App\Domain\Product\ProductRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\EloquentCustomerRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentOrderRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentProductRepository;
+use App\Models\Product;
+use App\Policies\Products\ProductPolicy;
 use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,5 +35,9 @@ class AppServiceProvider extends ServiceProvider
         // "login" route (there isn't one) — always fall through to a
         // 401 JSON response instead.
         Authenticate::redirectUsing(fn () => null);
+
+        // Non-standard policy namespace (Policies/Products/...), so it
+        // falls outside Laravel's auto-discovery convention.
+        Gate::policy(Product::class, ProductPolicy::class);
     }
 }
