@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Domain\Customer\CustomerRepositoryInterface;
+use App\Domain\Order\OrderRepositoryInterface;
 use App\Domain\Product\ProductRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\EloquentCustomerRepository;
+use App\Infrastructure\Persistence\Eloquent\EloquentOrderRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentProductRepository;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Support\ServiceProvider;
@@ -18,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(ProductRepositoryInterface::class, EloquentProductRepository::class);
         $this->app->bind(CustomerRepositoryInterface::class, EloquentCustomerRepository::class);
+        $this->app->bind(OrderRepositoryInterface::class, EloquentOrderRepository::class);
     }
 
     /**
