@@ -51,7 +51,9 @@ Es autenticación de SPA basada en **cookies de sesión + CSRF**, no tokens Bear
 3. Las siguientes requests solo necesitan enviar las cookies (`credentials: 'include'` / `withCredentials: true`); Sanctum valida la sesión vía el middleware `statefulApi()`.
 4. `POST /api/auth/logout` invalida la sesión y regenera el token CSRF.
 
-Esto requiere que el dominio del frontend esté en `SANCTUM_STATEFUL_DOMAINS` y `FRONTEND_URL` (para CORS con `supports_credentials: true`) — ver `.env.example`. Por defecto apunta a `localhost:5190` (Vite dev server de la SPA).
+Esto requiere que el dominio del frontend esté en `SANCTUM_STATEFUL_DOMAINS` y `FRONTEND_URL` (para CORS con `supports_credentials: true`) — ver `.env.example`. Por defecto apunta a `localhost:5190` (Vite dev server de la SPA). Una request solo se trata como "de sesión" si su `Origin`/`Referer` coincide con esos dominios — si no coincide, Sanctum la trata como stateless y falla silenciosamente (login "exitoso" pero `/me` da 401 después). Con herramientas que no son un navegador (Postman, curl) hay que agregar ese header a mano; el navegador lo manda solo.
+
+**El token CSRF rota en cada login/logout** (regeneración de sesión, buena práctica). El frontend debe leerlo de la cookie `XSRF-TOKEN` en cada request de escritura, nunca cachearlo una sola vez al arrancar la app — si lo cachea, empieza a fallar con `419` justo después del primer login.
 
 ## Endpoints
 

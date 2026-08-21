@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Billo Commerce API",
-    "description": "Coleccion de la API de Billo Commerce (Laravel + Sanctum, auth por cookie/sesion + CSRF, no Bearer token). Flujo obligatorio: 1) Auth > Get CSRF Cookie (siempre primero, en cada sesion de Postman), 2) Auth > Login, 3) Products > Create Product (guarda product_id), 4) Customers > Create Customer (guarda customer_id), 5) Orders > Create Order (usa product_id/customer_id, guarda order_id), 6) Orders > Update Order Status.\n\nLa coleccion maneja el header X-XSRF-TOKEN automaticamente (script a nivel de coleccion, lee la cookie XSRF-TOKEN que deja 'Get CSRF Cookie'). Postman guarda las cookies de sesion solas, no hace falta configurar nada mas.\n\nCambia la variable de coleccion `base_url`/`app_url` si no corres el servidor en localhost:8000.",
+    "description": "Coleccion de la API de Billo Commerce (Laravel + Sanctum, auth por cookie/sesion + CSRF, no Bearer token). Flujo obligatorio: 1) Auth > Get CSRF Cookie (siempre primero, en cada sesion de Postman), 2) Auth > Login, 3) Products > Create Product (guarda product_id), 4) Customers > Create Customer (guarda customer_id), 5) Orders > Create Order (usa product_id/customer_id, guarda order_id), 6) Orders > Update Order Status.\n\nUn script a nivel de coleccion (pestaña Pre-request) hace 2 cosas en cada request: (1) agrega Origin/Referer = variable `stateful_origin` -- Sanctum solo autentica por cookie si el origen coincide con SANCTUM_STATEFUL_DOMAINS, y a diferencia de un navegador, Postman no manda ese header solo; (2) copia la cookie XSRF-TOKEN (recien leida, porque rota en login/logout) al header X-XSRF-TOKEN. Las cookies de sesion las guarda Postman solo, no hace falta tocar nada mas.\n\nSi tu `.env` tiene otro valor en SANCTUM_STATEFUL_DOMAINS, actualiza la variable de coleccion `stateful_origin` para que coincida. Cambia `base_url`/`app_url` si no corres el servidor en localhost:8000.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -10,9 +10,17 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "// Sanctum SPA auth: toda request que cambia estado necesita el",
-          "// header X-XSRF-TOKEN con el valor de la cookie XSRF-TOKEN (que",
-          "// solo existe despues de correr 'Auth > Get CSRF Cookie').",
+          "// Sanctum solo trata la request como 'stateful' (sesion por cookie)",
+          "// si el Origin/Referer coincide con SANCTUM_STATEFUL_DOMAINS. Un",
+          "// navegador manda ese header solo; Postman no, asi que lo forzamos",
+          "// aqui simulando el origen configurado de la SPA.",
+          "pm.request.headers.upsert({ key: 'Origin', value: pm.collectionVariables.get('stateful_origin') });",
+          "pm.request.headers.upsert({ key: 'Referer', value: pm.collectionVariables.get('stateful_origin') + '/' });",
+          "",
+          "// Toda request que cambia estado necesita el header X-XSRF-TOKEN con",
+          "// el valor (decodificado) de la cookie XSRF-TOKEN. Ese token ROTA",
+          "// en login/logout, por eso se lee fresco de la cookie en cada",
+          "// request en vez de guardarlo una sola vez.",
           "const token = pm.cookies.get('XSRF-TOKEN');",
           "if (token) {",
           "    pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: decodeURIComponent(token) });",
@@ -24,6 +32,7 @@
   "variable": [
     { "key": "app_url", "value": "http://127.0.0.1:8000", "type": "string" },
     { "key": "base_url", "value": "http://127.0.0.1:8000/api", "type": "string" },
+    { "key": "stateful_origin", "value": "http://localhost:5190", "type": "string" },
     { "key": "product_id", "value": "", "type": "string" },
     { "key": "customer_id", "value": "", "type": "string" },
     { "key": "order_id", "value": "", "type": "string" }
