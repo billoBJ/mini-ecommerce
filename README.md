@@ -97,7 +97,7 @@ Eso levanta 4 servicios:
 | `postgres` | Base de datos | `5432` |
 | `queue` | `php artisan queue:work` | — |
 
-El `docker-entrypoint.sh` del contenedor `app` hace automáticamente, en cada arranque: copiar `.env` si falta, `composer install` si falta `vendor/`, esperar a que Postgres esté listo, generar `APP_KEY` si falta, y correr `php artisan migrate --force` (controlado por `RUN_MIGRATIONS=true` en `docker-compose.yml`; el servicio `queue` lo tiene en `false` para no migrar dos veces). El contenedor `app` recién se marca *healthy* cuando termina — `nginx` y `queue` esperan ese healthcheck antes de arrancar.
+El `docker-entrypoint.sh` del contenedor `app` hace automáticamente, en cada arranque: copiar `.env` si falta, `composer install` si falta `vendor/`, esperar a que Postgres esté listo, generar `APP_KEY` si falta, y correr `php artisan migrate --force` (controlado por `RUN_MIGRATIONS=true` en `docker-compose.yml`; el servicio `queue` lo tiene en `false` para no migrar dos veces). El contenedor `app` recién se marca *healthy* cuando termina — `queue` espera explícitamente ese healthcheck (`condition: service_healthy`) antes de arrancar su propio `queue:work`; `nginx` solo espera a que el contenedor `app` arranque (no a que termine de migrar), así que la primera petición justo al levantar los servicios puede tardar unos segundos en responder.
 
 ```bash
 # Sembrar datos de prueba

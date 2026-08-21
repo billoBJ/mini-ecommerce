@@ -1,18 +1,29 @@
 {
   "info": {
     "name": "Billo Commerce API",
-    "description": "Coleccion de la API de Billo Commerce (Laravel + Sanctum). Flujo sugerido: 1) Auth > Login (guarda el token automaticamente), 2) Products > Create Product (guarda product_id), 3) Customers > Create Customer (guarda customer_id), 4) Orders > Create Order (usa product_id/customer_id, guarda order_id), 5) Orders > Update Order Status.\n\nCambia la variable de coleccion `base_url` si no corres el servidor en localhost:8000.",
+    "description": "Coleccion de la API de Billo Commerce (Laravel + Sanctum, auth por cookie/sesion + CSRF, no Bearer token). Flujo obligatorio: 1) Auth > Get CSRF Cookie (siempre primero, en cada sesion de Postman), 2) Auth > Login, 3) Products > Create Product (guarda product_id), 4) Customers > Create Customer (guarda customer_id), 5) Orders > Create Order (usa product_id/customer_id, guarda order_id), 6) Orders > Update Order Status.\n\nLa coleccion maneja el header X-XSRF-TOKEN automaticamente (script a nivel de coleccion, lee la cookie XSRF-TOKEN que deja 'Get CSRF Cookie'). Postman guarda las cookies de sesion solas, no hace falta configurar nada mas.\n\nCambia la variable de coleccion `base_url`/`app_url` si no corres el servidor en localhost:8000.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "auth": {
-    "type": "bearer",
-    "bearer": [
-      { "key": "token", "value": "{{token}}", "type": "string" }
-    ]
-  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Sanctum SPA auth: toda request que cambia estado necesita el",
+          "// header X-XSRF-TOKEN con el valor de la cookie XSRF-TOKEN (que",
+          "// solo existe despues de correr 'Auth > Get CSRF Cookie').",
+          "const token = pm.cookies.get('XSRF-TOKEN');",
+          "if (token) {",
+          "    pm.request.headers.upsert({ key: 'X-XSRF-TOKEN', value: decodeURIComponent(token) });",
+          "}"
+        ]
+      }
+    }
+  ],
   "variable": [
+    { "key": "app_url", "value": "http://127.0.0.1:8000", "type": "string" },
     { "key": "base_url", "value": "http://127.0.0.1:8000/api", "type": "string" },
-    { "key": "token", "value": "", "type": "string" },
     { "key": "product_id", "value": "", "type": "string" },
     { "key": "customer_id", "value": "", "type": "string" },
     { "key": "order_id", "value": "", "type": "string" }
@@ -22,9 +33,23 @@
       "name": "Auth",
       "item": [
         {
+          "name": "Get CSRF Cookie",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{app_url}}/sanctum/csrf-cookie",
+              "host": ["{{app_url}}"],
+              "path": ["sanctum", "csrf-cookie"]
+            },
+            "description": "SIEMPRE correr esta request primero (al abrir Postman, o si el login falla con 419). No requiere body ni auth. Deja la cookie XSRF-TOKEN, que el script de la coleccion usa para poner el header X-XSRF-TOKEN en el resto de requests."
+          }
+        },
+        {
           "name": "Register",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
@@ -39,27 +64,12 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "register"]
             },
-            "description": "Publico. Crea un usuario y devuelve un token de Sanctum. 422 si el email ya existe o el password tiene menos de 8 caracteres."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "    const token = pm.response.json().data.token;",
-                  "    pm.collectionVariables.set('token', token);",
-                  "}"
-                ]
-              }
-            }
-          ]
+            "description": "Publico (pero requiere haber corrido 'Get CSRF Cookie' antes, por el CSRF check). Crea el usuario y ademas inicia sesion (Auth::login) -- Postman guarda la cookie de sesion sola. 422 si el email ya existe o el password tiene menos de 8 caracteres."
+          }
         },
         {
           "name": "Login",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
@@ -74,22 +84,8 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "login"]
             },
-            "description": "Publico. Usuario sembrado por UserSeeder. 401 si las credenciales son incorrectas."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    const token = pm.response.json().data.token;",
-                  "    pm.collectionVariables.set('token', token);",
-                  "}"
-                ]
-              }
-            }
-          ]
+            "description": "Publico (pero requiere haber corrido 'Get CSRF Cookie' antes). Usuario sembrado por UserSeeder. Inicia sesion -- las siguientes requests quedan autenticadas por cookie automaticamente. 401 si las credenciales son incorrectas."
+          }
         },
         {
           "name": "Me",
@@ -103,7 +99,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "me"]
             },
-            "description": "Requiere token. Devuelve el usuario autenticado."
+            "description": "Requiere sesion activa (correr Login antes). Devuelve el usuario autenticado."
           }
         },
         {
@@ -118,7 +114,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "logout"]
             },
-            "description": "Requiere token. Revoca el token actual (204 sin contenido)."
+            "description": "Requiere sesion activa. Invalida la sesion y regenera el token CSRF (204 sin contenido). Despues de esto hay que correr 'Get CSRF Cookie' de nuevo antes de loguear otra vez."
           }
         }
       ]
@@ -175,7 +171,7 @@
               "host": ["{{base_url}}"],
               "path": ["products"]
             },
-            "description": "Requiere token. `sku` debe ser unico. `cost` es opcional."
+            "description": "Requiere sesion activa. `sku` debe ser unico. `cost` es opcional."
           },
           "event": [
             {
@@ -208,7 +204,7 @@
               "host": ["{{base_url}}"],
               "path": ["products", "{{product_id}}"]
             },
-            "description": "Requiere token. A diferencia de Create, `active` es obligatorio aqui."
+            "description": "Requiere sesion activa. A diferencia de Create, `active` es obligatorio aqui."
           }
         },
         {
@@ -223,7 +219,7 @@
               "host": ["{{base_url}}"],
               "path": ["products", "{{product_id}}"]
             },
-            "description": "Requiere token. 204 sin contenido."
+            "description": "Requiere sesion activa. 204 sin contenido."
           }
         }
       ]
@@ -243,7 +239,7 @@
               "host": ["{{base_url}}"],
               "path": ["customers"]
             },
-            "description": "Requiere token. A diferencia de products, todo /customers esta protegido (datos con PII)."
+            "description": "Requiere sesion activa. A diferencia de products, todo /customers esta protegido (datos con PII)."
           }
         },
         {
@@ -258,7 +254,7 @@
               "host": ["{{base_url}}"],
               "path": ["customers", "{{customer_id}}"]
             },
-            "description": "Requiere token. 404 si no existe."
+            "description": "Requiere sesion activa. 404 si no existe."
           }
         },
         {
@@ -278,7 +274,7 @@
               "host": ["{{base_url}}"],
               "path": ["customers"]
             },
-            "description": "Requiere token. Solo `name`, `email` y `country` son obligatorios; el resto es opcional (`user_id` para ligarlo a un usuario registrado)."
+            "description": "Requiere sesion activa. Solo `name`, `email` y `country` son obligatorios; el resto es opcional (`user_id` para ligarlo a un usuario registrado)."
           },
           "event": [
             {
@@ -311,7 +307,7 @@
               "host": ["{{base_url}}"],
               "path": ["customers", "{{customer_id}}"]
             },
-            "description": "Requiere token."
+            "description": "Requiere sesion activa."
           }
         },
         {
@@ -326,7 +322,7 @@
               "host": ["{{base_url}}"],
               "path": ["customers", "{{customer_id}}"]
             },
-            "description": "Requiere token. 204 sin contenido."
+            "description": "Requiere sesion activa. 204 sin contenido."
           }
         }
       ]
@@ -346,7 +342,7 @@
               "host": ["{{base_url}}"],
               "path": ["orders"]
             },
-            "description": "Requiere token."
+            "description": "Requiere sesion activa."
           }
         },
         {
@@ -361,7 +357,7 @@
               "host": ["{{base_url}}"],
               "path": ["orders", "{{order_id}}"]
             },
-            "description": "Requiere token. Incluye los `items` anidados con su snapshot (name/sku/price al momento de la compra)."
+            "description": "Requiere sesion activa. Incluye los `items` anidados con su snapshot (name/sku/price al momento de la compra)."
           }
         },
         {
@@ -381,7 +377,7 @@
               "host": ["{{base_url}}"],
               "path": ["orders"]
             },
-            "description": "Requiere token. `customer_id` y `items` (al menos 1) son obligatorios. Los totales (subtotal/tax/total) se calculan en el servidor, no se envian. Corre 'Create Product' y 'Create Customer' antes para tener product_id/customer_id validos. 422 si algun product_id no existe o no hay stock suficiente."
+            "description": "Requiere sesion activa. `customer_id` y `items` (al menos 1) son obligatorios. Los totales (subtotal/tax/total) se calculan en el servidor, no se envian. Corre 'Create Product' y 'Create Customer' antes para tener product_id/customer_id validos. 422 si algun product_id no existe o no hay stock suficiente."
           },
           "event": [
             {
@@ -414,7 +410,7 @@
               "host": ["{{base_url}}"],
               "path": ["orders", "{{order_id}}", "status"]
             },
-            "description": "Requiere token. Valores validos: pending, confirmed, processing, shipped, completed, cancelled. El flujo es secuencial (pending->confirmed->processing->shipped->completed, o pending/confirmed->cancelled). 409 si el salto de estado no es valido (ej. confirmed->shipped)."
+            "description": "Requiere sesion activa. Valores validos: pending, confirmed, processing, shipped, completed, cancelled. El flujo es secuencial (pending->confirmed->processing->shipped->completed, o pending/confirmed->cancelled). 409 si el salto de estado no es valido (ej. confirmed->shipped)."
           }
         }
       ]
