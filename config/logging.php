@@ -131,6 +131,14 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        'observability' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/observability.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
