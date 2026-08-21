@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\DTOs\Auth\RegisterUserDTO;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class RegisterUserService
@@ -16,8 +17,8 @@ class RegisterUserService
             'password' => Hash::make($dto->password),
         ]);
 
-        $token = $user->createToken('api')->plainTextToken;
+        Auth::login($user);
 
-        return new AuthenticationResult($user, $token);
+        return new AuthenticationResult($user);
     }
 }

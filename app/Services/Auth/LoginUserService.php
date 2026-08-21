@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Domain\Auth\InvalidCredentialsException;
 use App\DTOs\Auth\LoginUserDTO;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class LoginUserService
@@ -17,8 +18,8 @@ class LoginUserService
             throw new InvalidCredentialsException();
         }
 
-        $token = $user->createToken('api')->plainTextToken;
+        Auth::login($user);
 
-        return new AuthenticationResult($user, $token);
+        return new AuthenticationResult($user);
     }
 }
