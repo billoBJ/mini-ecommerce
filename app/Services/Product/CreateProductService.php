@@ -20,6 +20,7 @@ class CreateProductService
             sku: $dto->sku,
             description: $dto->description,
             price: $dto->price,
+            cost: $dto->cost,
             stock: $dto->stock,
         );
 

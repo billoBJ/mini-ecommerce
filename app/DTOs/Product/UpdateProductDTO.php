@@ -11,6 +11,7 @@ class UpdateProductDTO
         public readonly float $price,
         public readonly int $stock,
         public readonly ?string $description = null,
+        public readonly ?float $cost = null,
         public readonly bool $active = true,
     ) {}
 }

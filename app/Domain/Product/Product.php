@@ -10,6 +10,7 @@ class Product
         public readonly string $sku,
         public readonly ?string $description,
         public readonly float $price,
+        public readonly ?float $cost,
         public readonly int $stock,
         public readonly bool $active = true,
     ) {}

@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Domain\Customer\CustomerRepositoryInterface;
 use App\Domain\Product\ProductRepositoryInterface;
+use App\Infrastructure\Persistence\Eloquent\EloquentCustomerRepository;
 use App\Infrastructure\Persistence\Eloquent\EloquentProductRepository;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -14,6 +17,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ProductRepositoryInterface::class, EloquentProductRepository::class);
+        $this->app->bind(CustomerRepositoryInterface::class, EloquentCustomerRepository::class);
     }
 
     /**
@@ -21,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // API-only app: never redirect an unauthenticated request to a
+        // "login" route (there isn't one) — always fall through to a
+        // 401 JSON response instead.
+        Authenticate::redirectUsing(fn () => null);
     }
 }

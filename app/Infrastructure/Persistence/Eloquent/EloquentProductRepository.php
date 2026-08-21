@@ -34,6 +34,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
             'sku' => $product->sku,
             'description' => $product->description,
             'price' => $product->price,
+            'cost' => $product->cost,
             'stock' => $product->stock,
             'active' => $product->active,
         ]);
@@ -56,6 +57,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
             sku: $model->sku,
             description: $model->description,
             price: (float) $model->price,
+            cost: $model->cost !== null ? (float) $model->cost : null,
             stock: $model->stock,
             active: $model->active,
         );
