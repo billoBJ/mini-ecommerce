@@ -11,6 +11,7 @@ class EloquentCustomerRepository implements CustomerRepositoryInterface
     public function all(): array
     {
         return CustomerModel::query()
+            ->orderBy('id')
             ->get()
             ->map(fn (CustomerModel $model) => $this->toDomain($model))
             ->all();

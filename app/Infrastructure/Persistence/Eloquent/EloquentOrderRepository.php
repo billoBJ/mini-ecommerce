@@ -15,6 +15,7 @@ class EloquentOrderRepository implements OrderRepositoryInterface
     public function all(): array
     {
         return OrderModel::with('items')
+            ->orderBy('id')
             ->get()
             ->map(fn (OrderModel $model) => $this->toDomain($model))
             ->all();

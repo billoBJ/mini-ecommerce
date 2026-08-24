@@ -11,6 +11,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
     public function all(): array
     {
         return ProductModel::query()
+            ->orderBy('id')
             ->get()
             ->map(fn (ProductModel $model) => $this->toDomain($model))
             ->all();
