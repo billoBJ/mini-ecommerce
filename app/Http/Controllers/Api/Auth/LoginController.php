@@ -16,6 +16,6 @@ class LoginController extends Controller
 
         $result = $loginUser->handle($dto);
 
-        return new AuthResource($result);
+        return $this->withMessage(new AuthResource($result), 'messages.success.logged_in');
     }
 }

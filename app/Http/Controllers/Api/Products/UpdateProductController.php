@@ -14,6 +14,9 @@ class UpdateProductController extends Controller
     {
         $dto = new UpdateProductDTO(...['id' => $product, ...$request->validated()]);
 
-        return new ProductResource($updateProduct->handle($dto));
+        return $this->withMessage(
+            new ProductResource($updateProduct->handle($dto)),
+            'messages.success.product_updated',
+        );
     }
 }

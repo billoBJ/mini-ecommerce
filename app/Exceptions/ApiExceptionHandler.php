@@ -57,6 +57,36 @@ final class ApiExceptionHandler
             ]);
         })->stop();
 
+        $exceptions->render(function (AuthenticationException $e, Request $request): ?JsonResponse {
+            if (! $this->wantsJson($request)) {
+                return null;
+            }
+
+            return $this->json($request, [
+                'message' => __('messages.errors.unauthenticated'),
+            ], 401);
+        });
+
+        $exceptions->render(function (AuthorizationException $e, Request $request): ?JsonResponse {
+            if (! $this->wantsJson($request)) {
+                return null;
+            }
+
+            return $this->json($request, [
+                'message' => __('messages.errors.unauthorized'),
+            ], 403);
+        });
+
+        $exceptions->render(function (ModelNotFoundException $e, Request $request): ?JsonResponse {
+            if (! $this->wantsJson($request)) {
+                return null;
+            }
+
+            return $this->json($request, [
+                'message' => __('messages.errors.model_not_found'),
+            ], 404);
+        });
+
         $exceptions->render(function (DomainException $e, Request $request): ?JsonResponse {
             if (! $this->wantsJson($request)) {
                 return null;
@@ -98,7 +128,7 @@ final class ApiExceptionHandler
     private function internalServerError(Throwable $e, Request $request): JsonResponse
     {
         $payload = [
-            'message' => 'Internal server error.',
+            'message' => __('messages.errors.internal_server'),
             'error' => 'internal_server_error',
             'request_id' => $request->headers->get('X-Request-Id'),
         ];

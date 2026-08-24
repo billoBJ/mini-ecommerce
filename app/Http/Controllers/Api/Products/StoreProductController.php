@@ -16,7 +16,7 @@ class StoreProductController extends Controller
 
         $product = $createProduct->handle($dto);
 
-        return (new ProductResource($product))
+        return $this->withMessage(new ProductResource($product), 'messages.success.product_created')
             ->response()
             ->setStatusCode(201);
     }

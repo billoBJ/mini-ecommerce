@@ -11,6 +11,8 @@ class DeleteCustomerController extends Controller
     {
         $deleteCustomer->handle($customer);
 
-        return response()->noContent();
+        return response()->json([
+            'message' => __('messages.success.customer_deleted'),
+        ]);
     }
 }

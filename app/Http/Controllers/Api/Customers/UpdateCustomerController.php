@@ -14,6 +14,9 @@ class UpdateCustomerController extends Controller
     {
         $dto = UpdateCustomerDTO::fromArray($customer, $request->validated());
 
-        return new CustomerResource($updateCustomer->handle($dto));
+        return $this->withMessage(
+            new CustomerResource($updateCustomer->handle($dto)),
+            'messages.success.customer_updated',
+        );
     }
 }

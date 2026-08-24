@@ -123,7 +123,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "logout"]
             },
-            "description": "Requiere sesion activa. Invalida la sesion y regenera el token CSRF (204 sin contenido). Despues de esto hay que correr 'Get CSRF Cookie' de nuevo antes de loguear otra vez."
+            "description": "Requiere sesion activa. Invalida la sesion, regenera el token CSRF y responde 200 con message. Despues de esto hay que correr 'Get CSRF Cookie' de nuevo antes de loguear otra vez."
           }
         }
       ]
@@ -228,7 +228,7 @@
               "host": ["{{base_url}}"],
               "path": ["products", "{{product_id}}"]
             },
-            "description": "Requiere sesion activa. 204 sin contenido."
+            "description": "Requiere sesion activa. 200 con message de exito."
           }
         }
       ]
@@ -331,7 +331,7 @@
               "host": ["{{base_url}}"],
               "path": ["customers", "{{customer_id}}"]
             },
-            "description": "Requiere sesion activa. 204 sin contenido."
+            "description": "Requiere sesion activa. 200 con message de exito."
           }
         }
       ]

@@ -25,7 +25,7 @@ class ApiExceptionHandlingTest extends TestCase
 
         $response->assertStatus(500)
             ->assertJsonPath('error', 'internal_server_error')
-            ->assertJsonPath('message', 'Internal server error.')
+            ->assertJsonPath('message', __('messages.errors.internal_server'))
             ->assertJsonMissingPath('debug')
             ->assertHeader('X-Request-Id');
 
@@ -63,7 +63,7 @@ class ApiExceptionHandlingTest extends TestCase
 
         $this->getJson('/api/products/99')
             ->assertStatus(404)
-            ->assertJsonPath('message', 'Product [99] not found.')
+            ->assertJsonPath('message', __('messages.errors.product_not_found', ['id' => 99]))
             ->assertJsonMissingPath('error');
     }
 
@@ -81,5 +81,22 @@ class ApiExceptionHandlingTest extends TestCase
             ->assertStatus(500)
             ->assertHeader('X-Request-Id', 'req-observability-1')
             ->assertJsonPath('request_id', 'req-observability-1');
+    }
+
+    public function test_error_messages_are_translated_when_accept_language_is_spanish(): void
+    {
+        config(['app.debug' => false]);
+
+        $this->mock(ListProductsService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('handle')
+                ->once()
+                ->andThrow(new RuntimeException('boom'));
+        });
+
+        $this->withHeaders(['Accept-Language' => 'es'])
+            ->getJson('/api/products')
+            ->assertStatus(500)
+            ->assertHeader('Content-Language', 'es')
+            ->assertJsonPath('message', 'Error interno del servidor.');
     }
 }

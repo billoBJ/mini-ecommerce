@@ -16,7 +16,7 @@ class StoreCustomerController extends Controller
 
         $customer = $createCustomer->handle($dto);
 
-        return (new CustomerResource($customer))
+        return $this->withMessage(new CustomerResource($customer), 'messages.success.customer_created')
             ->response()
             ->setStatusCode(201);
     }

@@ -16,7 +16,7 @@ class RegisterController extends Controller
 
         $result = $registerUser->handle($dto);
 
-        return (new AuthResource($result))
+        return $this->withMessage(new AuthResource($result), 'messages.success.registered')
             ->response()
             ->setStatusCode(201);
     }

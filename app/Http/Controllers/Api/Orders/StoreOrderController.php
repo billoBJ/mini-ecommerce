@@ -16,7 +16,7 @@ class StoreOrderController extends Controller
 
         $order = $createOrder->handle($dto);
 
-        return (new OrderResource($order))
+        return $this->withMessage(new OrderResource($order), 'messages.success.order_created')
             ->response()
             ->setStatusCode(201);
     }

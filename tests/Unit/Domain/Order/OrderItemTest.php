@@ -3,7 +3,7 @@
 namespace Tests\Unit\Domain\Order;
 
 use App\Domain\Order\OrderItem;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class OrderItemTest extends TestCase
 {
@@ -39,7 +39,7 @@ class OrderItemTest extends TestCase
     public function test_it_rejects_a_quantity_of_zero(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Order item quantity must be at least 1.');
+        $this->expectExceptionMessage(__('messages.errors.order_item_quantity'));
 
         new OrderItem(
             id: null,

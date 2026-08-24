@@ -4,8 +4,8 @@ namespace App\Domain\Order;
 
 class OrderNotFoundException extends \DomainException
 {
-    public function __construct(int $id)
+    public function __construct(public readonly int $id)
     {
-        parent::__construct("Order [{$id}] not found.");
+        parent::__construct(__('messages.errors.order_not_found', ['id' => $id]));
     }
 }

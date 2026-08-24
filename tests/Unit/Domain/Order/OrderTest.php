@@ -3,11 +3,11 @@
 namespace Tests\Unit\Domain\Order;
 
 use App\Domain\Order\EmptyOrderException;
+use App\Domain\Order\InvalidOrderStatusTransitionException;
 use App\Domain\Order\Order;
 use App\Domain\Order\OrderItem;
 use App\Domain\Order\OrderStatus;
-use PHPUnit\Framework\TestCase;
-use App\Domain\Order\InvalidOrderStatusTransitionException;
+use Tests\TestCase;
 
 class OrderTest extends TestCase
 {
@@ -35,7 +35,7 @@ class OrderTest extends TestCase
     public function test_it_rejects_an_order_with_zero_items(): void
     {
         $this->expectException(EmptyOrderException::class);
-        $this->expectExceptionMessage('An order must contain at least one item.');
+        $this->expectExceptionMessage(__('messages.errors.empty_order'));
 
         Order::place(customerId: 1, userId: null, items: []);
     }
@@ -121,7 +121,10 @@ class OrderTest extends TestCase
             ->withStatus(OrderStatus::Confirmed);
 
         $this->expectException(InvalidOrderStatusTransitionException::class);
-        $this->expectExceptionMessage('Cannot transition order from [confirmed] to [shipped].');
+        $this->expectExceptionMessage(__('messages.errors.invalid_order_status_transition', [
+            'from' => 'confirmed',
+            'to' => 'shipped',
+        ]));
 
         $order->withStatus(OrderStatus::Shipped);
     }

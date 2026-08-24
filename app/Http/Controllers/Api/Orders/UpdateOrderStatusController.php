@@ -16,6 +16,9 @@ class UpdateOrderStatusController extends Controller
 
         $updated = $transitionOrderStatus->handle($order, $next, changedBy: $request->user()->id);
 
-        return new OrderResource($updated);
+        return $this->withMessage(
+            new OrderResource($updated),
+            'messages.success.order_status_updated',
+        );
     }
 }

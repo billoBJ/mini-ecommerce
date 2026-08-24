@@ -15,6 +15,8 @@ class LogoutController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->noContent();
+        return response()->json([
+            'message' => __('messages.success.logged_out'),
+        ]);
     }
 }

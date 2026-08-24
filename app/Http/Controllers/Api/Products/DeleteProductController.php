@@ -15,6 +15,8 @@ class DeleteProductController extends Controller
 
         $deleteProduct->handle($product);
 
-        return response()->noContent();
+        return response()->json([
+            'message' => __('messages.success.product_deleted'),
+        ]);
     }
 }

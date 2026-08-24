@@ -14,7 +14,7 @@ class OrderItem
         public readonly float $discount = 0,
     ) {
         if ($this->quantity < 1) {
-            throw new \InvalidArgumentException('Order item quantity must be at least 1.');
+            throw new \InvalidArgumentException(__('messages.errors.order_item_quantity'));
         }
     }
 

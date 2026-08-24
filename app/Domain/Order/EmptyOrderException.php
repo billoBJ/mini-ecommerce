@@ -6,6 +6,6 @@ class EmptyOrderException extends \DomainException
 {
     public function __construct()
     {
-        parent::__construct('An order must contain at least one item.');
+        parent::__construct(__('messages.errors.empty_order'));
     }
 }

@@ -4,8 +4,8 @@ namespace App\Domain\Customer;
 
 class CustomerNotFoundException extends \DomainException
 {
-    public function __construct(int $id)
+    public function __construct(public readonly int $id)
     {
-        parent::__construct("Customer [{$id}] not found.");
+        parent::__construct(__('messages.errors.customer_not_found', ['id' => $id]));
     }
 }
