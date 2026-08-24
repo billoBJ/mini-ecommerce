@@ -49,6 +49,6 @@ class OrderItemTest extends TestCase
             price: 50.0,
             quantity: 0,
         );
-    }
+    }   
 
 }
