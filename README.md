@@ -10,8 +10,9 @@ API de e-commerce construida con Laravel 13, pensada como backend para una SPA d
 - **Redis** — extensión PHP instalada y disponible; cache/sesión/queue usan el driver `database` por defecto (ver [Variables de entorno](#variables-de-entorno))
 - **Colas de Laravel** — worker dedicado en Docker (`queue:work`), driver `database`
 - **Vite + Tailwind 4** — únicamente para los assets propios de Laravel (`welcome.blade.php`); la SPA de Vue vive en un repo aparte y consume esta API vía CORS
-- **PHPUnit** — configurado (`pestphp/pest-plugin` está permitido en `composer.json` pero Pest no está instalado todavía)
+- **PHPUnit** — suite real (dominio + manejo de errores), no solo los stubs de ejemplo
 - **Docker** — Dockerfile multi-stage + docker-compose (app, nginx, postgres, queue)
+- **Localización (i18n)** — mensajes de éxito/error en `en`/`es`, negociados vía `Accept-Language`
 
 ## Contenido / Arquitectura
 
@@ -42,6 +43,10 @@ app/
 
 `Order` es el ejemplo más completo: agrega sus propios `OrderItem`, calcula `subtotal()`/`tax()`/`total()` a partir de los items (nunca los recibe ya calculados), y valida transiciones de estado (`pending -> confirmed -> processing -> shipped -> completed`, o `pending`/`confirmed -> cancelled`) antes de persistir. `EloquentOrderRepository::save()` guarda la orden y sus items en una sola transacción de base de datos.
 
+**Autorización** vive en `app/Policies/` (ej. `ProductPolicy`), centralizando la decisión de quién puede crear/editar/borrar en un solo lugar en vez de esparcirla en cada `FormRequest`. Hoy son permisivas (cualquier usuario autenticado puede gestionar el catálogo — no hay roles todavía), pero el punto de extensión ya existe: agregar scoping por rol es cambiar la Policy, no buscar el chequeo por todo el código.
+
+**Observabilidad e i18n** son cross-cutting, viven fuera del patrón por feature — ver las secciones dedicadas más abajo.
+
 ## Autenticación
 
 Es autenticación de SPA basada en **cookies de sesión + CSRF**, no tokens Bearer:
@@ -67,6 +72,8 @@ Esto requiere que el dominio del frontend esté en `SANCTUM_STATEFUL_DOMAINS` y 
 | Customers | `GET/POST/PUT/DELETE /api/customers[/{id}]` | todas requieren sesión (PII) |
 | Orders | `GET/POST /api/orders`, `GET /api/orders/{id}`, `PATCH /api/orders/{id}/status` | todas requieren sesión |
 
+Las respuestas que crean/editan/borran algo incluyen un `message` legible además de `data` (ej. `{"data": {...}, "message": "Product created successfully."}`); las de solo lectura (`GET`) devuelven únicamente `data`. Los mensajes salen de `lang/*/messages.php` — ver [Internacionalización](#internacionalización).
+
 ## Base de datos
 
 20 migraciones, PostgreSQL. Grupos:
@@ -78,6 +85,19 @@ Esto requiere que el dominio del frontend esté en `SANCTUM_STATEFUL_DOMAINS` y 
 Reglas de borrado clave: `orders.customer_id` y `order_items.product_id` son `RESTRICT` (no se puede borrar un customer/product con historial); `order_items`/`order_status_history` son `CASCADE` respecto a su `order_id` (mueren con la orden); `changed_by`/`user_id` en tablas de auditoría son `SET NULL`. `order_items` guarda un snapshot (`name`/`sku`/`price`) del producto al momento de la compra, independiente del registro vivo.
 
 **Seeders** (`php artisan db:seed`): 11 usuarios, 5 equipos, roles/permisos con asignaciones, 30 productos, 15 customers, 25 orders con items/historial/pagos coherentes entre sí, 12 webhooks.
+
+## Observabilidad
+
+Cada request recibe un `X-Request-Id` (el del cliente si lo manda, si no un UUID nuevo) vía el middleware `AssignRequestId` — vuelve en el header de la respuesta y se propaga al contexto de **todos** los logs de esa request (`Log::shareContext()`). `LogHttpRequest` registra cada petición (método, path, status, duración, usuario, IP) en un canal de log dedicado (`storage/logs/observability-*.log`, driver `daily`), con nivel `error`/`warning`/`info` según el status code.
+
+El manejo de excepciones está centralizado en `App\Exceptions\ApiExceptionHandler`, no repartido en `bootstrap/app.php`:
+
+- Las excepciones de dominio (`ProductNotFoundException`, `InvalidOrderStatusTransitionException`, etc.) se mapean a su código HTTP correcto y responden `{"message": "...", "request_id": "..."}` — nunca terminan en un 500 genérico.
+- Cualquier excepción no esperada responde `{"message": "Internal server error.", "error": "internal_server_error", "request_id": "..."}` (más un bloque `debug` con clase/mensaje/archivo/línea si `APP_DEBUG=true`), y queda registrada con el stack trace completo. Las excepciones "de cliente" (validación, 401/403/404) están en `dontReport()` para no ensuciar los logs con algo esperado.
+
+## Internacionalización
+
+Ningún string de error o éxito está hardcodeado — todos pasan por `__('messages....')`, con traducciones en `lang/en/messages.php` y `lang/es/messages.php`. El middleware `SetLocale` negocia el idioma vía el header `Accept-Language` (contra `en`/`es` soportados, con fallback a `en`) y devuelve `Content-Language` en la respuesta.
 
 ## Instalación
 
@@ -153,6 +173,7 @@ php artisan serve
 | `QUEUE_CONNECTION` | Driver de colas | `database` |
 | `CACHE_STORE` | Driver de cache | `database` |
 | `REDIS_*` | Redis está disponible (extensión instalada) pero no es el driver activo por defecto | — |
+| `APP_LOCALE`, `APP_FALLBACK_LOCALE` | Idioma por defecto de los mensajes (ver [Internacionalización](#internacionalización)) | `en` |
 
 ## Testing
 
@@ -160,8 +181,13 @@ php artisan serve
 php artisan test
 ```
 
-Actualmente solo están los tests de ejemplo que trae Laravel por defecto (`tests/Feature/ExampleTest.php`, `tests/Unit/ExampleTest.php`) — todavía no hay cobertura de Products/Customers/Orders.
+PHPUnit, 22 tests:
+
+- `tests/Unit/Domain/Order/OrderItemTest.php`, `OrderTest.php` — dominio puro, **sin base de datos**: cálculo de totales, invariantes (`items` no puede estar vacío, `quantity >= 1`), y la máquina de estados completa (camino feliz, cancelaciones válidas, transiciones inválidas rechazadas, inmutabilidad de `withStatus()`).
+- `tests/Feature/ApiExceptionHandlingTest.php` — el envoltorio de errores de `ApiExceptionHandler`: 500 genérico sin filtrar internals cuando `APP_DEBUG=false`, detalles de debug cuando está en `true`, que las excepciones de dominio no se conviertan en 500, y que el `request_id` entrante se propague en la respuesta de error.
+
+Falta cobertura de Feature tests para los flujos completos de Products/Customers/Orders vía HTTP (hoy solo están probados manualmente y a través de la colección de Postman).
 
 ## Colección de Postman
 
-[`Billo-Commerce.postman_collection.json`](./Billo-Commerce.postman_collection.json) — los 18 endpoints de negocio con ejemplos de body y variables encadenadas (login guarda el token/sesión, crear un recurso guarda su id para los siguientes requests).
+[`Billo-Commerce.postman_collection.json`](./Billo-Commerce.postman_collection.json) — 19 requests: los 18 endpoints de negocio más el de obtener la cookie CSRF, con ejemplos de body y variables encadenadas (login inicia sesión automáticamente vía cookies, crear un recurso guarda su id para los siguientes requests).
