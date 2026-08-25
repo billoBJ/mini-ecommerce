@@ -81,12 +81,6 @@ class Order
         return round($this->subtotal() + $this->tax() - $this->discount, 2);
     }
 
-    /**
-     * Returns a NEW Order in the next status — same immutable "wither"
-     * pattern used everywhere else in this codebase (Product, Customer):
-     * nothing mutates in place, a fresh snapshot is handed to the
-     * repository to persist.
-     */
     public function withStatus(OrderStatus $next): self
     {
         if (! in_array($next, $this->allowedTransitions(), true)) {
@@ -105,9 +99,6 @@ class Order
         );
     }
 
-    /**
-     * @return OrderStatus[]
-     */
     private function allowedTransitions(): array
     {
         return match ($this->status) {
